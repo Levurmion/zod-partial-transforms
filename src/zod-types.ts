@@ -1,6 +1,6 @@
 import * as core from "zod/v4/core";
 import type { IsArray, IsObject, PickLikeValue } from "./types";
-import type { IsTuple, ValueOf } from "type-fest";
+import type { IsLiteral, IsTuple, ValueOf } from "type-fest";
 
 type ZodStringTypes =
   | core.$ZodString
@@ -35,7 +35,7 @@ type ZodNumberTypes =
   | core.$ZodBigInt
   | core.$ZodBigIntFormat;
 
-type ZodUndefinedTypes = core.$ZodUndefined | core.$ZodOptional;
+type ZodUndefinedTypes = core.$ZodUndefined;
 
 type DataTypes = {
   string: string;
@@ -49,7 +49,6 @@ type DataTypes = {
   array: unknown[];
   tuple: unknown[];
   never: never;
-  void: void;
 };
 
 type ZodDataTypes = {
@@ -57,39 +56,48 @@ type ZodDataTypes = {
   number: ZodNumberTypes;
   undefined: ZodUndefinedTypes;
   null: core.$ZodNull;
-  boolean: core.$ZodBoolean;
+  boolean: core.$ZodBoolean<boolean>;
   symbol: core.$ZodSymbol;
   date: core.$ZodDate;
   object: core.$ZodObject;
   array: core.$ZodArray;
   tuple: core.$ZodTuple;
   never: core.$ZodNever;
-  void: core.$ZodVoid;
 };
 
-export type GetZodTypeFor<T> = Extract<
+type GetZodTypeFor<T> = Extract<
   ValueOf<Pick<ZodDataTypes, keyof PickLikeValue<DataTypes, T>>>,
   core.$ZodType
 >;
 
-export type MapObjectToZodType<T> = {
-  [K in keyof T]: GetZodTypeFor<T[K]>;
-};
-
 type ExtractZodType<T> = Extract<T, core.$ZodType>;
 
-export type MapTupleToZodType<T> = T extends [infer First, ...infer Rest]
-  ? [RecursivelyMapObjectToZodType<First>, ...MapTupleToZodType<Rest>]
-  : [];
-
-export type RecursivelyMapObjectToZodType<T> = IsObject<T> extends true
-  ? core.$ZodObject<{
-      [K in keyof T]: RecursivelyMapObjectToZodType<T[K]>;
-    }>
+export type MapTypeToZodType<T> = IsLiteral<T> extends true
+  ? MapTypeToZodType_Literal<T>
+  : IsObject<T> extends true
+  ? core.$ZodObject<MapTypeToZodType_Object<T>>
   : T extends unknown[]
   ? IsTuple<T> extends true
-    ? core.$ZodTuple<MapTupleToZodType<T>>
+    ? core.$ZodTuple<MapTypeToZodType_Tuple<T>>
     : IsArray<T> extends true
-    ? core.$ZodArray<ExtractZodType<RecursivelyMapObjectToZodType<T[number]>>>
+    ? core.$ZodArray<MapTypeToZodType_Array<T>>
     : core.$ZodNever
   : GetZodTypeFor<T>;
+
+type MapTypeToZodType_Object<T> = {
+  [K in keyof T]: MapTypeToZodType<T[K]>;
+};
+
+type MapTypeToZodType_Tuple<T extends unknown[]> = [] extends T
+  ? []
+  : T extends [infer First, ...infer Rest]
+  ? [MapTypeToZodType<First>, ...MapTypeToZodType_Tuple<Rest>]
+  : never;
+
+type MapTypeToZodType_Array<T extends unknown[]> = ExtractZodType<
+  MapTypeToZodType<T[number]>
+>;
+
+type MapTypeToZodType_Literal<T> = core.$ZodLiteral<
+  Extract<T, core.util.Literal>
+>;
