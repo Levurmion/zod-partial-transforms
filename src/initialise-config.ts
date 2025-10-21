@@ -2,7 +2,7 @@ import {
   createConfig,
   createLooseObjectConstructor,
   createStrictObjectConstructor,
-  type ConfigProductTypes,
+  type ConfigProductTypeBuilder,
   type CreateConfig,
   type InferProductTypeOriginal,
   type UnpackConfig,
@@ -14,6 +14,9 @@ type Example = {
   a: {
     b: string;
     c: number;
+    nested: {
+      deep: boolean;
+    };
   };
   d: string;
 };
@@ -21,10 +24,26 @@ type Example = {
 type ExampleConfig = CreateConfig<Example>;
 
 const config = createConfig<Example>()(({ loose }) =>
-  loose({ a: ({ loose }) => loose({}) })
+  loose({
+    a: ({ loose }) =>
+      loose({
+        c: z.number(),
+        x: z.boolean(),
+        nested: ({ strict }) =>
+          strict({
+            deep: z.boolean(),
+          }),
+      }),
+  })
 );
 
-function isProductTypeConfig(config: unknown): config is ConfigProductTypes {
+type Unpacked = UnpackConfig<
+  typeof config
+>["_unpackedShape"]["a"]["_unpackedShape"];
+
+function isProductTypeConfig(
+  config: unknown
+): config is ConfigProductTypeBuilder {
   return typeof config === "function";
 }
 
@@ -47,12 +66,10 @@ export function initialiseConfig<Config>(config: Config): UnpackConfig<Config> {
       }
     }
 
-    return productType._zodParser(
-      unpackedProductTypeShape
-    ) as UnpackConfig<Config>;
+    return unpackedProductTypeShape as UnpackConfig<Config>;
   } else {
     return config as UnpackConfig<Config>;
   }
 }
 
-const initialisedConfig = initialiseConfig(config)["_zod"]["def"];
+const initialisedConfig = initialiseConfig(config);

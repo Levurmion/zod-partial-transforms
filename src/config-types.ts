@@ -1,6 +1,7 @@
-import type { IsLiteral } from "type-fest";
-import * as z from "zod/v4";
+import type { IsLiteral, Merge } from "type-fest";
 import type { FunctionType, IsObject } from "./types";
+import * as z from "zod/v4";
+import * as core from "zod/v4/core";
 
 // ===== NAKED TYPES =====
 
@@ -75,16 +76,25 @@ type GetConfigNakedType<Original> = Extract<
 
 // ===== PRODUCT TYPES =====
 
-// brand for nominal typing
-declare const __config: unique symbol;
-export type ConfigBrand = { [__config]: true };
-
 export type ObjectOriginal = { [k: string]: OriginalTypes };
+export type ObjectShape = Record<string, any>;
 
 // strict objects
 type StrictObjectShape<Original extends ObjectOriginal> = {
   [K in keyof Original]: CreateConfig<Original[K]>;
 };
+
+class StrictObject<Original extends ObjectOriginal, Shape extends ObjectShape> {
+  _zodParser = z.strictObject;
+  _original = {} as Original;
+  _type: "strict" = "strict";
+  _shape: Shape;
+  _unpackedShape = {} as { [K in keyof Shape]: UnpackConfig<Shape[K]> };
+
+  constructor(shape: Shape) {
+    this._shape = shape;
+  }
+}
 
 export function createStrictObjectConstructor<
   Original extends ObjectOriginal
@@ -92,18 +102,7 @@ export function createStrictObjectConstructor<
   function strictObjectConstructor<Shape extends StrictObjectShape<Original>>(
     shape: Shape
   ) {
-    class StrictObject {
-      _zodParser = z.strictObject;
-      _original = {} as Original;
-      _type: "strict" = "strict";
-      _shape: Shape;
-
-      constructor(shape: Shape) {
-        this._shape = shape;
-      }
-    }
-
-    return new StrictObject(shape);
+    return new StrictObject<Original, Shape>(shape);
   }
 
   return strictObjectConstructor;
@@ -119,24 +118,25 @@ type LooseObjectShape<Original extends ObjectOriginal> = Partial<{
   [K in keyof Original]: CreateConfig<Original[K]>;
 }>;
 
+class LooseObject<Original extends ObjectOriginal, Shape extends ObjectShape> {
+  _zodParser = z.looseObject;
+  _original = {} as Original;
+  _type: "loose" = "loose";
+  _shape: Shape;
+  _unpackedShape = {} as { [K in keyof Shape]: UnpackConfig<Shape[K]> };
+
+  constructor(shape: Shape) {
+    this._shape = shape;
+  }
+}
+
 export function createLooseObjectConstructor<
   Original extends ObjectOriginal
 >() {
   function looseObjectConstructor<Shape extends LooseObjectShape<Original>>(
     shape: Shape
   ) {
-    class LooseObject {
-      _zodParser = z.looseObject;
-      _original = {} as Original;
-      _type: "loose" = "loose";
-      _shape: Shape;
-
-      constructor(shape: Shape) {
-        this._shape = shape;
-      }
-    }
-
-    return new LooseObject(shape);
+    return new LooseObject<Original, Shape>(shape);
   }
 
   return looseObjectConstructor;
@@ -148,12 +148,18 @@ type CreateLooseObjectConstructor<Original extends ObjectOriginal> = ReturnType<
   typeof createLooseObjectConstructor<Original>
 >;
 
+export type ConfigProductType = {
+  _type: string;
+  _original: unknown;
+  _shape: unknown;
+};
+
 export type ConfigProductTypeOptions = {
   strict: StrictObjectConstructor;
   loose: LooseObjectConstructor;
 };
 
-export type ConfigProductTypes = (
+export type ConfigProductTypeBuilder = (
   options: ConfigProductTypeOptions
 ) => ReturnType<ConfigProductTypeOptions[keyof ConfigProductTypeOptions]>;
 
@@ -162,15 +168,18 @@ export type ConfigProductTypes = (
 export type InferProductTypeOriginal<ProductType> = Extract<
   ProductType,
   FunctionType
-> extends infer T extends ConfigProductTypes
+> extends infer T extends ConfigProductTypeBuilder
   ? ReturnType<T>["_original"]
   : never;
 
 // ===== ALL TYPES =====
 
-export type ConfigNode = ConfigNakedTypes | ConfigProductTypes;
 export type OriginalTypes = OriginalNakedTypes | { [k: string]: OriginalTypes };
-export type UnpackedConfigNode = ConfigNakedTypes | z.ZodObject;
+export type ConfigNode = ConfigNakedTypes | ConfigProductTypeBuilder;
+export type UnpackedConfigNode =
+  | ConfigNakedTypes
+  | StrictObject<ObjectOriginal, ObjectShape>
+  | LooseObject<ObjectOriginal, ObjectShape>;
 
 // ===== CONFIG CREATOR GENERIC =====
 
@@ -208,8 +217,5 @@ export type UnpackConfig<Config> = Config extends FunctionType
   ? UnpackConfig_ProductType<Config>
   : Extract<Config, ConfigNakedTypes>;
 
-type UnpackConfig_ProductType<Config extends ConfigProductTypes> = z.ZodObject<{
-  [K in keyof ReturnType<Config>["_shape"]]: UnpackConfig<
-    Exclude<ReturnType<Config>["_shape"][K], undefined>
-  >;
-}>;
+type UnpackConfig_ProductType<Config extends ConfigProductTypeBuilder> =
+  ReturnType<Config>;
