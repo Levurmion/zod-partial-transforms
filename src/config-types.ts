@@ -255,8 +255,11 @@ export type DeriveZodType<Node> = Extract<
 >;
 
 type DeriveZodType_ProductType<Node extends ProductTypeNode> =
-  Node extends LooseObject<ObjectOriginal, infer Shape>
-    ? z.ZodObject<{ [K in keyof Shape]: DeriveZodType<Shape[K]> }, core.$loose>
+  Node extends LooseObject<infer O, infer Shape>
+    ? z.ZodObject<
+        { [K in keyof Shape]: DeriveZodType<Shape[K]> },
+        { in: O; out: O }
+      >
     : Node extends StrictObject<ObjectOriginal, infer Shape>
     ? z.ZodObject<{ [K in keyof Shape]: DeriveZodType<Shape[K]> }, core.$strict>
     : never;

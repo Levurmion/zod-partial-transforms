@@ -82,7 +82,9 @@ export function initialiseConfig<Config>(config: Config): UnpackConfig<Config> {
       }
     }
 
-    return unpackedProductTypeShape as UnpackConfig<Config>;
+    return productType.constructor(
+      unpackedProductTypeShape
+    ) as UnpackConfig<Config>;
   } else {
     return config as UnpackConfig<Config>;
   }
@@ -112,4 +114,6 @@ export function deriveZodType<UnpackedConfig>(
 }
 
 const initialisedConfig = initialiseConfig(config);
-const derivedConfig = deriveZodType(initialisedConfig);
+const derivedConfig = deriveZodType(initialisedConfig).transform(
+  ({ a, ...rest }) => {}
+);
