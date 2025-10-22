@@ -200,3 +200,25 @@ export function createConfig<O extends OriginalTypes>() {
     return config;
   };
 }
+
+type Example = {
+  a: {
+    b: string;
+    c: number;
+    nested: {
+      deep: boolean;
+    };
+  };
+  d: string;
+};
+
+const config = createConfig<Example>()(({ loose }) =>
+  loose({
+    a: ({ strict }) =>
+      strict({
+        b: z.string(),
+        c: z.number(),
+        nested: ({ loose }) => loose({}),
+      }),
+  })
+);
