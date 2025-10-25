@@ -72,7 +72,8 @@ type OriginalNakedTypes = ConfigNakedTypesMap[0];
 type GetConfigNakedType<O> = Extract<ConfigNakedTypesMap, [O, unknown]>[1];
 
 // ===== PRODUCT TYPES =====
-type ProductTypeTags = "strict" | "loose";
+declare const STRICT: unique symbol;
+declare const LOOSE: unique symbol;
 
 type ObjectTypeOriginalShape = Record<string, OriginalTypes>;
 type ObjectTypeConfigShape = Record<string, ConfigNode>;
@@ -84,71 +85,15 @@ interface StrictObjectConfigShape<Shape extends ObjectTypeConfigShape> {
   shape: Shape;
 }
 
-interface StrictObjectShape<Shape extends ObjectTypeShape> {
-  type: "strict";
-  shape: Shape;
-}
-
 // loose object
 interface LooseObjectConfigShape<Shape extends ObjectTypeConfigShape> {
   configType: "loose";
   shape: Shape;
 }
 
-interface LooseObjectShape<Shape extends ObjectTypeShape> {
-  type: "loose";
-  shape: Shape;
-}
-
 // ===== PRODUCT TYPE CONSTRUCTORS =====
 
-export function createStrictObjectConfigConstructor<O extends OriginalTypes>() {
-  type ObjectPart = Extract<O, ObjectTypeOriginalShape>;
-  return function strictObjectConfigConstructor<
-    Shape extends { [K in keyof ObjectPart]: CreateConfig<ObjectPart[K]> }
-  >(shape: Shape): StrictObjectConfigShape<Shape> {
-    return {
-      configType: "strict",
-      shape,
-    };
-  };
-}
-
-type StrictObjectConfigConstructor<O extends OriginalTypes> = Call<
-  typeof createStrictObjectConfigConstructor<O>
->;
-
-export function createLooseObjectConfigConstructor<O extends OriginalTypes>() {
-  type ObjectPart = Extract<O, ObjectTypeOriginalShape>;
-  return function looseObjectConfigConstructor<
-    Shape extends Partial<{
-      [K in keyof ObjectPart]: CreateConfig<ObjectPart[K]>;
-    }>
-  >(shape: Shape): LooseObjectConfigShape<Shape> {
-    return {
-      configType: "loose",
-      shape,
-    };
-  };
-}
-
-type LooseObjectConfigConstructor<O extends OriginalTypes> = Call<
-  typeof createLooseObjectConfigConstructor<O>
->;
-
 // ===== PRODUCT TYPE UNIONS =====
-type ProductTypeConfigOptions = {
-  strict: StrictObjectConfigConstructor<OriginalTypes>;
-  loose: LooseObjectConfigConstructor<OriginalTypes>;
-};
-
-type ProductTypeConfigBuilder = (
-  options: ProductTypeConfigOptions
-) => Call<ProductTypeConfigOptions[keyof ProductTypeConfigOptions]>;
-
-type ProductTypeNodes =
-  | StrictObjectShape<ObjectTypeShape>
-  | LooseObjectShape<ObjectTypeShape>;
 
 // ===== ALL TYPES =====
 
@@ -156,13 +101,10 @@ type ProductTypeNodes =
 export type OriginalTypes = OriginalNakedTypes | { [k: string]: OriginalTypes };
 
 // emitted configuration nodes with respect to the passed OriginalTypes
-export type ConfigNode =
-  | ConfigNakedTypes
-  | ProductTypeConfigBuilder
-  | undefined;
+export type ConfigNode = ConfigNakedTypes | undefined;
 
 // Nodes after all builders have been called and resolved
-export type Node = ConfigNakedTypes | ProductTypeNodes;
+export type Node = ConfigNakedTypes;
 
 // ===== CONFIG CREATOR GENERIC =====
 
@@ -176,10 +118,7 @@ export type CreateConfig<O extends OriginalTypes> = IsLiteral<O> extends true
 
 type CreateConfig_Literal<O> = z.ZodLiteral<Extract<O, z.util.Literal>>;
 
-type CreateConfig_Object<O extends ObjectTypeOriginalShape> = (options: {
-  strict: StrictObjectConfigConstructor<O>;
-  loose: LooseObjectConfigConstructor<O>;
-}) => Call<StrictObjectConfigConstructor<O> | LooseObjectConfigConstructor<O>>;
+type CreateConfig_Object<O extends ObjectTypeOriginalShape> = never;
 
 export function createConfig<O extends OriginalTypes>() {
   return function configCreator<Config extends CreateConfig<O>>(
