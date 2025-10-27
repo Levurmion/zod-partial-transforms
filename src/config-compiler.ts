@@ -108,16 +108,22 @@ type CreateCompilerConfig_Object<
 > = (
   compiler: <Shape extends ExpectedShape>(
     config: Shape
-  ) => CompileObjectConfig<Shape>
-) => CompileObjectConfig<{
-  [K in keyof O]?: CreateCompilerConfig<O[K]> extends FunctionType
-    ? Call<CreateCompilerConfig<O[K]>>
-    : Extract<CreateCompilerConfig<O[K]>, z.ZodType>;
-}>;
+  ) => CompileObjectConfig<Shape, O>
+) => CompileObjectConfig<
+  {
+    [K in keyof O]?: CreateCompilerConfig<O[K]> extends FunctionType
+      ? Call<CreateCompilerConfig<O[K]>>
+      : Extract<CreateCompilerConfig<O[K]>, z.ZodType>;
+  },
+  O
+>;
 
 // ===== CONFIG COMPILER =====
-type CompileObjectConfig<Config> = IsObject<Config> extends true
-  ? z.ZodObject<{
+type CompileObjectConfig<
+  Config,
+  Original extends OriginalObjectType
+> = IsObject<Config> extends true
+  ? {
       [K in keyof Config]: Exclude<Config[K], undefined> extends infer Value
         ? Value extends z.ZodType
           ? Config[K]
@@ -125,7 +131,21 @@ type CompileObjectConfig<Config> = IsObject<Config> extends true
           ? Call<Config[K]>
           : never
         : never;
-    }>
+    } extends infer CompiledShape extends core.$ZodLooseShape
+    ? z.ZodObject<
+        CompiledShape,
+        {
+          in: MergeObjectIO<Original, CompiledShape>;
+          out: MergeObjectIO<Original, CompiledShape>;
+        }
+      >
+    : never
+  : never;
+
+type MergeObjectIO<Original, Shape extends core.$ZodLooseShape> = z.input<
+  z.ZodObject<Shape>
+> extends infer ShapeInput
+  ? Merge<Original, ShapeInput>
   : never;
 
 type Example = {
@@ -154,6 +174,5 @@ const schema = createSchema<Example>()((compile) =>
             aca: z.literal("literal"),
           }),
       }),
-    b: z.number(),
   })
 );
