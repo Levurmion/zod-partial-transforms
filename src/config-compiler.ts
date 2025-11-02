@@ -1,4 +1,4 @@
-import type { IsLiteral, Merge } from "type-fest";
+import type { IsLiteral, IsTuple, Merge } from "type-fest";
 import type { Call, FunctionType, IsObject } from "./types";
 import * as z from "zod/v4";
 import * as core from "zod/v4/core";
@@ -104,7 +104,9 @@ export type CreateConfig<O extends OriginalTypes> = IsLiteral<O> extends true
   : O extends OriginalObjectType
   ? CreateConfig_Object<O>
   : O extends OriginalArrayType
-  ? CreateConfig_Array<O>
+  ? IsTuple<O> extends true
+    ? CreateConfig_Tuple<O>
+    : CreateConfig_Array<O>
   : GetConfigNakedType<O>;
 
 type CreateConfig_Literal<O> = z.ZodLiteral<Extract<O, z.util.Literal>>;
@@ -120,6 +122,19 @@ type CreateConfig_Array<O extends OriginalArrayType> = (
     config: Shape
   ) => ResolveArrayConfig<Shape>
 ) => z.ZodType;
+
+type CreateConfig_Tuple<O extends OriginalArrayType> = (
+  tuple: <Shape extends CreateTupleShape<O>>(
+    config: Shape
+  ) => ResolveTupleConfig<Shape>
+) => z.ZodType;
+
+type CreateTupleShape<O extends OriginalArrayType> = O extends [
+  infer First extends OriginalTypes,
+  ...infer Rest extends OriginalArrayType
+]
+  ? [CreateConfig<First>, ...CreateTupleShape<Rest>]
+  : [];
 
 // ===== CONFIG RESOLVER =====
 type ResolveConfig<Config> = Config extends FunctionType
@@ -162,13 +177,23 @@ type MergeObjectIO<
   ? Merge<Original, IO>
   : never;
 
-type ResolveArrayConfig<Config> = Config extends unknown[]
-  ? ResolveConfig<
-      Config[number]
-    > extends infer ResolvedElements extends core.SomeType
-    ? z.ZodArray<ResolvedElements>
-    : never
+type ResolveArrayConfig<Config extends unknown[]> = ResolveConfig<
+  Config[number]
+> extends infer ResolvedElements extends core.SomeType
+  ? z.ZodArray<ResolvedElements>
   : never;
+
+type ResolveTupleConfig<Config extends unknown[]> =
+  ResolveTupleConfig_Rec<Config> extends infer ResolvedElements extends z.util.TupleItems
+    ? z.ZodTuple<ResolvedElements>
+    : never;
+
+type ResolveTupleConfig_Rec<Config extends unknown[]> = Config extends [
+  infer First,
+  ...infer Rest
+]
+  ? [ResolveConfig<First>, ...ResolveTupleConfig_Rec<Rest>]
+  : [];
 
 const createSchema =
   <T extends OriginalTypes>() =>
@@ -185,6 +210,7 @@ type Example = {
   };
   b: number;
   arr: { a: null; b: { nested: string } }[];
+  tup: [number, boolean, { prop: number }];
 };
 
 const schema = createSchema<Example>()((object) =>
@@ -201,6 +227,12 @@ const schema = createSchema<Example>()((object) =>
             a: z.null(),
             b: (object) => object({ nested: z.string() }),
           }),
+      ]),
+    tup: (tuple) =>
+      tuple([
+        z.number(),
+        z.boolean(),
+        (object) => object({ prop: z.number() }),
       ]),
   })
 );
