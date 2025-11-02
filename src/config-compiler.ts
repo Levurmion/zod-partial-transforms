@@ -99,7 +99,8 @@ export type Node = ConfigNakedTypes;
 
 export type CreateConfig<O extends OriginalTypes> = IsLiteral<O> extends true
   ? CreateConfig_Literal<O>
-  : O extends boolean
+  : // booleans need to be handled separately as it is a union of true | false
+  O extends boolean
   ? BooleanTypes
   : O extends OriginalObjectType
   ? CreateConfig_Object<O>
@@ -112,16 +113,22 @@ export type CreateConfig<O extends OriginalTypes> = IsLiteral<O> extends true
 type CreateConfig_Literal<O> = z.ZodLiteral<Extract<O, z.util.Literal>>;
 
 type CreateConfig_Object<O extends OriginalObjectType = OriginalObjectType> = (
-  object: <Shape extends { [K in keyof O]?: CreateConfig<O[K]> }>(
+  object: <Shape extends CreateObjectShape<O>>(
     config: Shape
   ) => ResolveObjectConfig<Shape, O>
 ) => z.ZodType;
 
+type CreateObjectShape<O extends OriginalObjectType> = {
+  [K in keyof O]?: CreateConfig<O[K]>;
+};
+
 type CreateConfig_Array<O extends OriginalArrayType> = (
-  array: <Shape extends CreateConfig<O[number]>[]>(
+  array: <Shape extends CreateArrayShape<O>>(
     config: Shape
   ) => ResolveArrayConfig<Shape>
 ) => z.ZodType;
+
+type CreateArrayShape<O extends OriginalArrayType> = CreateConfig<O[number]>[];
 
 type CreateConfig_Tuple<O extends OriginalArrayType> = (
   tuple: <Shape extends CreateTupleShape<O>>(
@@ -183,17 +190,15 @@ type ResolveArrayConfig<Config extends unknown[]> = ResolveConfig<
   ? z.ZodArray<ResolvedElements>
   : never;
 
-type ResolveTupleConfig<Config extends unknown[]> =
+type ResolveTupleConfig<Config extends readonly unknown[]> =
   ResolveTupleConfig_Rec<Config> extends infer ResolvedElements extends z.util.TupleItems
     ? z.ZodTuple<ResolvedElements>
     : never;
 
-type ResolveTupleConfig_Rec<Config extends unknown[]> = Config extends [
-  infer First,
-  ...infer Rest
-]
-  ? [ResolveConfig<First>, ...ResolveTupleConfig_Rec<Rest>]
-  : [];
+type ResolveTupleConfig_Rec<Config extends readonly unknown[]> =
+  Config extends [infer First, ...infer Rest]
+    ? [ResolveConfig<First>, ...ResolveTupleConfig_Rec<Rest>]
+    : [];
 
 const createSchema =
   <T extends OriginalTypes>() =>
@@ -209,7 +214,7 @@ type Example = {
     };
   };
   b: number;
-  arr: { a: null; b: { nested: string } }[];
+  arr: ({ a: null; b: { nested: string } } | number)[];
   tup: [number, boolean, { prop: number }];
 };
 
@@ -232,7 +237,10 @@ const schema = createSchema<Example>()((object) =>
       tuple([
         z.number(),
         z.boolean(),
-        (object) => object({ prop: z.number() }),
-      ]),
+        (object) => object({ prop: z.number(), extra: z.null() }),
+      ]).transform((arg) => arg[2]),
   })
 );
+
+type In = z.input<typeof schema>;
+type Out = z.output<typeof schema>;
