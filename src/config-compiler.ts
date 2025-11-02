@@ -109,14 +109,13 @@ type CreateCompilerConfig_Object<
   compiler: <Shape extends ExpectedShape>(
     config: Shape
   ) => CompileObjectConfig<Shape, O>
-) => CompileObjectConfig<
-  {
-    [K in keyof O]?: CreateCompilerConfig<O[K]> extends FunctionType
-      ? Call<CreateCompilerConfig<O[K]>>
-      : Extract<CreateCompilerConfig<O[K]>, z.ZodType>;
-  },
-  O
->;
+) => CompileObjectConfig<ObjectConfigReturnType<O>, O>;
+
+type ObjectConfigReturnType<O extends OriginalObjectType> = {
+  [K in keyof O]?: CreateCompilerConfig<O[K]> extends FunctionType
+    ? Call<CreateCompilerConfig<O[K]>>
+    : Extract<CreateCompilerConfig<O[K]>, z.ZodType>;
+};
 
 // ===== CONFIG COMPILER =====
 type CompileObjectConfig<
@@ -148,6 +147,11 @@ type MergeObjectIO<Original, Shape extends core.$ZodLooseShape> = z.input<
   ? Merge<Original, ShapeInput>
   : never;
 
+const createSchema =
+  <T extends OriginalTypes>() =>
+  <Config extends CreateCompilerConfig<T>>(config: Config) =>
+    config as Config extends FunctionType ? Call<Config> : Config;
+
 type Example = {
   a: {
     aa: string;
@@ -158,11 +162,6 @@ type Example = {
   };
   b: number;
 };
-
-const createSchema =
-  <T extends OriginalTypes>() =>
-  <Config extends CreateCompilerConfig<T>>(config: Config) =>
-    config as Config extends FunctionType ? Call<Config> : Config;
 
 const schema = createSchema<Example>()((compile) =>
   compile({
