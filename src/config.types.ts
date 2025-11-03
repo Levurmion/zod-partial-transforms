@@ -108,19 +108,25 @@ type CreateObjectShape<O extends OriginalObjectType> = {
   [K in keyof O]?: CreateConfig<O[K]>;
 };
 
-type CreateConfig_Array<O extends OriginalArrayType> = (opt: {
-  array: <Shape extends CreateArrayShape<O>>(
-    config: Shape
-  ) => ResolveArrayConfig<Shape>;
-}) => z.ZodType;
+export type ObjectShape = { [key: string]: ConfigNode };
+
+type CreateConfig_Array<O extends OriginalArrayType = OriginalArrayType> =
+  (opt: {
+    array: <Shape extends CreateArrayShape<O>>(
+      config: Shape
+    ) => ResolveArrayConfig<Shape>;
+  }) => z.ZodType;
 
 type CreateArrayShape<O extends OriginalArrayType> = CreateConfig<O[number]>[];
 
-type CreateConfig_Tuple<O extends OriginalArrayType> = (opt: {
-  tuple: <Shape extends CreateTupleShape<O>>(
-    config: Shape
-  ) => ResolveTupleConfig<Shape>;
-}) => z.ZodType;
+export type ArrayShape = ConfigNode[];
+
+type CreateConfig_Tuple<O extends OriginalArrayType = OriginalArrayType> =
+  (opt: {
+    tuple: <Shape extends CreateTupleShape<O>>(
+      config: Shape
+    ) => ResolveTupleConfig<Shape>;
+  }) => z.ZodType;
 
 type CreateTupleShape<O extends OriginalArrayType> = O extends [
   infer First extends OriginalTypes,
@@ -128,6 +134,13 @@ type CreateTupleShape<O extends OriginalArrayType> = O extends [
 ]
   ? [CreateConfig<First>, ...CreateTupleShape<Rest>]
   : [];
+
+export type ConfigNode =
+  | z.ZodType
+  | CreateConfig_Object
+  | CreateConfig_Array
+  | CreateConfig_Tuple
+  | undefined;
 
 // ===== CONFIG RESOLVER =====
 export type ResolveConfig<Config> = Config extends FunctionType
