@@ -1,0 +1,12 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+      "declaration": true,            // Generate .d.ts types
+      "emitDeclarationOnly": false,
+      "outDir": "dist",              // Output goes here
+      "rootDir": "src",              // Input source only
+      "isolatedModules": true
+    },
+    "include": ["src"]
+  }
+  

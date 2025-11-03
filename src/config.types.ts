@@ -130,7 +130,7 @@ type CreateTupleShape<O extends OriginalArrayType> = O extends [
   : [];
 
 // ===== CONFIG RESOLVER =====
-type ResolveConfig<Config> = Config extends FunctionType
+export type ResolveConfig<Config> = Config extends FunctionType
   ? Call<Config>
   : Config extends z.ZodType
   ? Config
