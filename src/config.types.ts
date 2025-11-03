@@ -1,5 +1,5 @@
-import type { IsLiteral, IsTuple, Merge } from "type-fest";
-import type { Call, FunctionType, IsObject } from "./types";
+import type { IsLiteral, IsTuple } from "type-fest";
+import type { Call, FunctionType, IsObject, MergeObjectIO } from "./types";
 import * as z from "zod/v4";
 import * as core from "zod/v4/core";
 
@@ -158,18 +158,6 @@ type ResolveObjectConfig<
     : never
   : never;
 
-type MergeObjectIO<
-  Original,
-  Shape extends core.$ZodLooseShape,
-  Mode extends "input" | "output"
-> = (
-  Mode extends "input"
-    ? z.input<z.ZodObject<Shape>>
-    : z.output<z.ZodObject<Shape>>
-) extends infer IO
-  ? Merge<Original, IO>
-  : never;
-
 type ResolveArrayConfig<Config extends unknown[]> = ResolveConfig<
   Config[number]
 > extends infer ResolvedElements extends core.SomeType
@@ -185,48 +173,3 @@ type ResolveTupleConfig_Rec<Config extends readonly unknown[]> =
   Config extends [infer First, ...infer Rest]
     ? [ResolveConfig<First>, ...ResolveTupleConfig_Rec<Rest>]
     : [];
-
-const createSchema =
-  <T extends OriginalTypes>() =>
-  <Config extends CreateConfig<T>>(config: Config) =>
-    config as ResolveConfig<Config>;
-
-type Example = {
-  a: {
-    aa: string;
-    ab: boolean;
-    ac: {
-      aca: "literal";
-    };
-  };
-  b: number;
-  arr?: ({ a: null; b: { nested: string } } | number)[];
-  tup: [number, boolean, { prop: number }];
-};
-
-const schema = createSchema<Example>()(({ object }) =>
-  object({
-    a: ({ object }) =>
-      object({
-        aa: z.string().transform((v) => parseInt(v)),
-        ab: z.boolean().transform(() => 1),
-      }),
-    arr: ({ array }) =>
-      array([
-        ({ object }) =>
-          object({
-            a: z.null(),
-            b: ({ object }) => object({ nested: z.string() }),
-          }),
-      ]),
-    tup: ({ tuple }) =>
-      tuple([
-        z.number(),
-        z.boolean(),
-        ({ object }) => object({ prop: z.number() }),
-      ]),
-  })
-);
-
-type In = z.input<typeof schema>;
-type Out = z.output<typeof schema>;

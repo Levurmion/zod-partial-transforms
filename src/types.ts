@@ -1,15 +1,11 @@
+import type { Merge } from "type-fest";
+import * as z from "zod/v4";
+import * as core from "zod/v4/core";
+
 export type IsObject<T> = T extends object
   ? T extends unknown[]
     ? false
     : true
-  : false;
-
-export type IsArray<T> = T extends unknown[] ? true : false;
-
-export type IsTuple<T> = T extends readonly [...unknown[]]
-  ? number extends T["length"]
-    ? false // it's an array
-    : true // it's a tuple
   : false;
 
 export type PickLikeValue<T, V> = IsObject<T> extends true
@@ -19,3 +15,15 @@ export type PickLikeValue<T, V> = IsObject<T> extends true
 export type FunctionType = (...args: any[]) => any;
 
 export type Call<Fn extends FunctionType> = ReturnType<Fn>;
+
+export type MergeObjectIO<
+  Original,
+  Shape extends core.$ZodLooseShape,
+  Mode extends "input" | "output"
+> = (
+  Mode extends "input"
+    ? z.input<z.ZodObject<Shape>>
+    : z.output<z.ZodObject<Shape>>
+) extends infer IO
+  ? Merge<Original, IO>
+  : never;
