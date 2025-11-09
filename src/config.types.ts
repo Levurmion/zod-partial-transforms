@@ -109,9 +109,14 @@ type CreateConfig_Union<O extends OriginalTypes = OriginalTypes> =
       }) => z.ZodType
     : never;
 
-export type CreateUnionShape<O extends OriginalTypes> = (O extends unknown
-  ? CreateConfig<O>
-  : never)[];
+export type CreateUnionShape<O extends OriginalTypes> = (
+  | (O extends unknown ? CreateConfig<O> : never)
+  | HandleBooleanInUnion<O>
+)[];
+
+type HandleBooleanInUnion<O extends OriginalTypes> = [boolean] extends [O]
+  ? BooleanTypes
+  : never;
 
 type CreateConfig_Literal<O> = z.ZodLiteral<Extract<O, z.util.Literal>>;
 
