@@ -1,4 +1,4 @@
-import type { IsLiteral, IsTuple } from "type-fest";
+import type { IsLiteral, IsTuple, IsUnion } from "type-fest";
 import type { Call, FunctionType, IsObject, MergeObjectIO } from "./types";
 import * as z from "zod/v4";
 import * as core from "zod/v4/core";
@@ -84,10 +84,13 @@ export type OriginalTupleType = readonly OriginalTypes[];
 
 // ===== CONFIG CREATOR GENERIC =====
 
-export type CreateConfig<O extends OriginalTypes> = IsLiteral<O> extends true
+export type CreateConfig<O extends OriginalTypes> =
+  | CreateConfig_Union<O>
+  | CreateConfig_Recursive<O>;
+
+type CreateConfig_Recursive<O extends OriginalTypes> = IsLiteral<O> extends true
   ? CreateConfig_Literal<O>
-  : // booleans need to be handled separately as it is a union of true | false
-  O extends boolean
+  : O extends boolean
   ? BooleanTypes
   : O extends OriginalObjectType
   ? CreateConfig_Object<O>
@@ -96,6 +99,19 @@ export type CreateConfig<O extends OriginalTypes> = IsLiteral<O> extends true
     ? CreateConfig_Tuple<O>
     : CreateConfig_Array<O>
   : GetConfigNakedType<O>;
+
+type CreateConfig_Union<O extends OriginalTypes = OriginalTypes> =
+  IsUnion<O> extends true
+    ? (opt: {
+        union: <Shape extends CreateUnionShape<O>>(
+          config: Shape
+        ) => ResolveArrayConfig<Shape>;
+      }) => z.ZodType
+    : never;
+
+export type CreateUnionShape<O extends OriginalTypes> = (O extends unknown
+  ? CreateConfig<O>
+  : never)[];
 
 type CreateConfig_Literal<O> = z.ZodLiteral<Extract<O, z.util.Literal>>;
 
@@ -116,12 +132,11 @@ type CreateConfig_Array<O extends OriginalArrayType = OriginalArrayType> =
   (opt: {
     array: <Shape extends CreateArrayShape<O>>(
       config: Shape
-    ) => ResolveArrayConfig<Shape>;
+    ) => ResolveConfig<Shape>;
   }) => z.ZodType;
 
-export type CreateArrayShape<O extends OriginalArrayType> = CreateConfig<
-  O[number]
->[];
+export type CreateArrayShape<O extends OriginalArrayType = OriginalArrayType> =
+  CreateConfig<O[number]>;
 
 export type ArrayShape = ConfigNode[];
 
@@ -146,6 +161,7 @@ export type ConfigNode =
   | CreateConfig_Object
   | CreateConfig_Array
   | CreateConfig_Tuple
+  | CreateConfig_Union
   | undefined;
 
 // ===== CONFIG RESOLVER =====
@@ -153,6 +169,8 @@ export type ResolveConfig<Config> = Config extends FunctionType
   ? Call<Config>
   : Config extends z.ZodType
   ? Config
+  : Config extends (infer Configs)[]
+  ? ResolveConfig<Configs>
   : never;
 
 type ResolveObjectConfig<

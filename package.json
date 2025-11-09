@@ -10,7 +10,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "prepublishOnly": "npm run build",
-    "test": "vitest"
+    "test": "vitest",
+    "check-types": "tsc -p tsconfig.build.json --noEmit"
   },
   "license": "MIT",
   "publishConfig": {

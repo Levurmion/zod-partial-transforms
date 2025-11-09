@@ -14,7 +14,7 @@ describe("Naked Types", () => {
   });
 
   it("boolean", () => {
-    const schema = createSchema<boolean>()(z.boolean());
+    const schema = createSchema<boolean>()(({ union }) => union([z.boolean()]));
     expect(schema.parse(true)).toEqual(true);
     expect(schema.parse(false)).toEqual(false);
   });
@@ -95,7 +95,9 @@ describe("Product Types", () => {
     type Array = (string | number | boolean | null)[];
 
     const schema = createSchema<Array>()(({ array }) =>
-      array([z.string(), z.number(), z.boolean(), z.null()])
+      array(({ union }) =>
+        union([z.string(), z.number(), z.boolean(), z.null()])
+      )
     );
 
     const array: Array = [null, false, 123, "string"];
@@ -148,10 +150,9 @@ describe("Product Types", () => {
     type NestedArray = { nested: { a: string } }[];
 
     const schema = createSchema<NestedArray>()(({ array }) =>
-      array([
-        ({ object }) =>
-          object({ nested: ({ object }) => object({ a: z.string() }) }),
-      ])
+      array(({ object }) =>
+        object({ nested: ({ object }) => object({ a: z.string() }) })
+      )
     );
 
     const nestedArray: NestedArray = [{ nested: { a: "string" } }];
@@ -178,6 +179,10 @@ describe("Product Types", () => {
 
     expect(schema.parse(correctNestedTuple)).toEqual(correctNestedTuple);
     expect(() => schema.parse(wrongNestedTuple)).toThrowError();
+  });
+
+  it("union", () => {
+    type Union = boolean | number | { a: string };
   });
 });
 

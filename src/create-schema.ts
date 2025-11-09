@@ -27,9 +27,9 @@ const objectResolver = <Shape extends ObjectShape>(config: Shape) => {
   return z.looseObject(shape);
 };
 
-const arrayResolver = <Shape extends ArrayShape>(config: Shape) => {
-  const shape = config.map((node) => resolveConfig(node));
-  return z.array(z.union(shape));
+const arrayResolver = <Shape extends ConfigNode>(config: Shape) => {
+  const shape = resolveConfig(config);
+  return z.array(shape);
 };
 
 const tupleResolver = <Shape extends TupleShape>(config: Shape) => {
@@ -40,10 +40,16 @@ const tupleResolver = <Shape extends TupleShape>(config: Shape) => {
   return z.tuple(shape);
 };
 
+const unionResolver = <Shape extends ArrayShape>(config: Shape) => {
+  const shape = config.map((node) => resolveConfig(node));
+  return z.union(shape);
+};
+
 const resolverOptions = {
   object: objectResolver,
   array: arrayResolver,
   tuple: tupleResolver,
+  union: unionResolver,
 };
 
 const resolveConfig = <Config extends ConfigNode>(
