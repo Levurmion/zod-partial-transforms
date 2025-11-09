@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createSchema } from "./create-schema";
 import * as z from "zod/v4";
-import type { CreateConfig } from "./config.types";
-import type { FunctionType, FunctionUnionSubtype } from "./types";
 
 describe("Naked Types", () => {
   it("string", () => {
