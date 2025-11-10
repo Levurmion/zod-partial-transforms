@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createSchema } from "./create-schema";
 import * as z from "zod/v4";
+import type { CreateConfig } from "./config.types";
 
 describe("Naked Types", () => {
   it("string", () => {
@@ -147,55 +148,66 @@ describe("Product Types", () => {
   });
 
   it("nested array", () => {
-    type NestedArray = { nested: { a: string } }[];
+    type NestedArray = number[][];
 
     const schema = createSchema<NestedArray>()(({ array }) =>
-      array(({ object }) =>
-        object({ nested: ({ object }) => object({ a: z.string() }) })
-      )
+      array(({ array }) => array(z.number()))
     );
 
-    const nestedArray: NestedArray = [{ nested: { a: "string" } }];
-
+    const nestedArray: NestedArray = [
+      [1, 2, 3],
+      [1, 2, 3],
+      [1, 2, 3],
+    ];
     expect(schema.parse(nestedArray)).toEqual(nestedArray);
   });
 
   it("nested tuple", () => {
-    type NestedTuple = [{ nested: { a: string } }, { b: boolean }];
+    type NestedTuple = [[number, string], [string, number]];
 
     const schema = createSchema<NestedTuple>()(({ tuple }) =>
       tuple([
-        ({ object }) =>
-          object({ nested: ({ object }) => object({ a: z.string() }) }),
-        ({ object }) => object({ b: z.boolean() }),
+        ({ tuple }) => tuple([z.number(), z.string()]),
+        ({ tuple }) => tuple([z.string(), z.number()]),
       ])
     );
 
     const correctNestedTuple: NestedTuple = [
-      { nested: { a: "string" } },
-      { b: true },
+      [123, "string"],
+      ["string", 123],
     ];
-    const wrongNestedTuple = [{ b: true }, { nested: { a: "string" } }];
+    const wrongNestedTuple = [
+      ["string", 123],
+      [123, "string"],
+    ] as const;
 
     expect(schema.parse(correctNestedTuple)).toEqual(correctNestedTuple);
     expect(() => schema.parse(wrongNestedTuple)).toThrowError();
   });
 
   it("union", () => {
-    type Union = boolean | number | { a: string };
+    type Union = boolean | number | { a: string } | number[];
 
-    const schema = createSchema<Union>()(({ union }) =>
+    type UnionConfig = Parameters<
+      Parameters<Extract<CreateConfig<Union>, Function>>[0]["union"]
+    >[0];
+
+    const unionSchema = createSchema<Union>()(({ union }) =>
       union([
         z.boolean(),
         z.number(),
         ({ object }) => object({ a: z.string() }),
+        ({ array }) => array(z.number()),
       ])
     );
+    const singleSchema = createSchema<Union>()(z.number());
 
-    expect(schema.parse(true)).toEqual(true);
-    expect(schema.parse(false)).toEqual(false);
-    expect(schema.parse(123)).toEqual(123);
-    expect(schema.parse({ a: "string" })).toEqual({ a: "string" });
+    expect(unionSchema.parse(true)).toEqual(true);
+    expect(unionSchema.parse(false)).toEqual(false);
+    expect(unionSchema.parse(123)).toEqual(123);
+    expect(unionSchema.parse({ a: "string" })).toEqual({ a: "string" });
+
+    expect(singleSchema.parse(123)).toEqual(123);
   });
 });
 

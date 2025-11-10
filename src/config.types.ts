@@ -11,7 +11,7 @@ import * as core from "zod/v4/core";
 
 // ===== NAKED TYPES =====
 
-type StringTypes =
+type ZodStringTypes =
   | z.ZodString
   | z.ZodStringFormat
   | z.ZodGUID
@@ -38,30 +38,30 @@ type StringTypes =
   | z.ZodE164
   | z.ZodJWT;
 
-type NumberTypes =
+type ZodNumberTypes =
   | z.ZodNumber
   | z.ZodNumberFormat
   | z.ZodBigInt
   | z.ZodBigIntFormat;
 
-type UndefinedTypes = z.ZodUndefined;
+type ZodUndefinedTypes = z.ZodUndefined;
 
-type NullTypes = z.ZodNull;
+type ZodNullTypes = z.ZodNull;
 
-type SymbolTypes = z.ZodSymbol;
+type ZodSymbolTypes = z.ZodSymbol;
 
-type DateTypes = z.ZodDate;
+type ZodDateTypes = z.ZodDate;
 
-type BooleanTypes = z.ZodBoolean | TypedZodPipe<z.ZodBoolean>;
+type ZodBooleanTypes = z.ZodBoolean | TypedZodPipe<z.ZodBoolean>;
 
 type ConfigNakedTypesMap =
-  | [string, StringTypes]
-  | [number, NumberTypes]
-  | [undefined, UndefinedTypes]
-  | [null, NullTypes]
-  | [symbol, SymbolTypes]
-  | [Date, DateTypes]
-  | [boolean, BooleanTypes];
+  | [string, ZodStringTypes]
+  | [number, ZodNumberTypes]
+  | [undefined, ZodUndefinedTypes]
+  | [null, ZodNullTypes]
+  | [symbol, ZodSymbolTypes]
+  | [Date, ZodDateTypes]
+  | [boolean, ZodBooleanTypes];
 
 type OriginalNakedTypes = ConfigNakedTypesMap[0];
 
@@ -88,21 +88,30 @@ export type OriginalObjectType = { [k: string]: OriginalTypes };
 export type OriginalArrayType = OriginalTypes[];
 export type OriginalTupleType = readonly OriginalTypes[];
 
+export type BuilderFunctions = MergeBuilderFunctions<
+  | CreateConfig_Object
+  | CreateConfig_Array
+  | CreateConfig_Tuple
+  | CreateConfig_Union
+>;
+export type BuilderFunctionOptions = Parameters<BuilderFunctions>[0];
+export type ConfigNode = z.ZodType | undefined | BuilderFunctions;
+
 // ===== CONFIG CREATOR GENERIC =====
 
 export type CreateConfig<O extends OriginalTypes> = [
-  CreateConfig_Recursive<O>,
+  CreateConfig_Singleton<O>,
   CreateConfig_Union<O>
-] extends [infer Rec extends ConfigNode, infer Union extends ConfigNode]
+] extends [infer Single extends ConfigNode, infer Union extends ConfigNode]
   ?
-      | Exclude<Rec | Union, FunctionType>
-      | MergeBuilderFunctions<Extract<Rec | Union, FunctionType>>
+      | Exclude<Single | Union, FunctionType>
+      | MergeBuilderFunctions<Extract<Single | Union, FunctionType>>
   : never;
 
-type CreateConfig_Recursive<O extends OriginalTypes> = IsLiteral<O> extends true
+type CreateConfig_Singleton<O extends OriginalTypes> = IsLiteral<O> extends true
   ? CreateConfig_Literal<O>
   : O extends boolean
-  ? BooleanTypes
+  ? ZodBooleanTypes
   : O extends OriginalObjectType
   ? CreateConfig_Object<O>
   : O extends OriginalArrayType
@@ -121,12 +130,18 @@ type CreateConfig_Union<O extends OriginalTypes = OriginalTypes> =
     : never;
 
 export type CreateUnionShape<O extends OriginalTypes> = (
-  | (O extends unknown ? CreateConfig_Recursive<O> : never)
+  | Exclude<HandleUnionMembers<O>, FunctionType>
+  | MergeBuilderFunctions<Extract<HandleUnionMembers<O>, FunctionType>>
   | HandleBooleanInUnion<O>
 )[];
 
+type HandleUnionMembers<O extends OriginalTypes> = O extends unknown
+  ? // distribute O to be interrogated per-union member
+    CreateConfig_Singleton<O>
+  : never;
+
 type HandleBooleanInUnion<O extends OriginalTypes> = [boolean] extends [O]
-  ? BooleanTypes
+  ? ZodBooleanTypes
   : never;
 
 type CreateConfig_Literal<O> = z.ZodLiteral<Extract<O, z.util.Literal>>;
@@ -148,7 +163,7 @@ type CreateConfig_Array<O extends OriginalArrayType = OriginalArrayType> =
   (opt: {
     array: <Shape extends CreateArrayShape<O>>(
       config: Shape
-    ) => ResolveConfig<Shape>;
+    ) => ResolveArrayConfig<Shape>;
   }) => z.ZodType;
 
 export type CreateArrayShape<O extends OriginalArrayType = OriginalArrayType> =
@@ -172,23 +187,11 @@ export type CreateTupleShape<O extends OriginalTupleType> = O extends [
 
 export type TupleShape = readonly ConfigNode[];
 
-export type ConfigNode =
-  | z.ZodType
-  | undefined
-  | MergeBuilderFunctions<
-      | CreateConfig_Object
-      | CreateConfig_Array
-      | CreateConfig_Tuple
-      | CreateConfig_Union
-    >;
-
 // ===== CONFIG RESOLVER =====
 export type ResolveConfig<Config> = Config extends FunctionType
   ? Call<Config>
   : Config extends z.ZodType
   ? Config
-  : Config extends (infer Configs)[]
-  ? ResolveConfig<Configs>
   : never;
 
 type ResolveObjectConfig<
@@ -219,11 +222,7 @@ type ResolveUnionConfig<Config extends unknown[]> = ResolveConfig<
   ? z.ZodUnion<ResolvedElements[]>
   : never;
 
-type ResolveArrayConfig<Config extends unknown[]> = ResolveConfig<
-  Config[number]
-> extends infer ResolvedElements extends core.SomeType
-  ? z.ZodArray<ResolvedElements>
-  : never;
+type ResolveArrayConfig<Config extends unknown> = ResolveConfig<Config>;
 
 type ResolveTupleConfig<Config extends readonly unknown[]> =
   ResolveTupleConfig_Rec<Config> extends infer ResolvedElements extends z.util.TupleItems

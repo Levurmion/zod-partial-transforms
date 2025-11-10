@@ -1,5 +1,7 @@
 import type {
   ArrayShape,
+  BuilderFunctionOptions,
+  BuilderFunctions,
   ConfigNode,
   CreateConfig,
   ObjectShape,
@@ -8,6 +10,7 @@ import type {
   TupleShape,
 } from "./config.types";
 import * as z from "zod/v4";
+import type { MergeBuilderFunctions } from "./types";
 
 const isZodType = (obj: object): obj is z.ZodType => {
   return "_zod" in obj;
@@ -50,7 +53,7 @@ const resolverOptions = {
   array: arrayResolver,
   tuple: tupleResolver,
   union: unionResolver,
-};
+} as BuilderFunctionOptions;
 
 const resolveConfig = <Config extends ConfigNode>(
   config: Config
@@ -60,8 +63,7 @@ const resolveConfig = <Config extends ConfigNode>(
   } else if (isZodType(config)) {
     return config as ResolveConfig<Config>;
   } else {
-    // TODO: cast with appropriate type
-    return config(resolverOptions as any) as ResolveConfig<Config>;
+    return config(resolverOptions) as ResolveConfig<Config>;
   }
 };
 
