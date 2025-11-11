@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import { createSchema } from "./create-schema";
 import * as z from "zod/v4";
 
@@ -204,6 +204,82 @@ describe("Product Types", () => {
     expect(unionSchema.parse([1, 2, 3, 1.1])).toEqual([1, 2, 3, 1.1]);
 
     expect(singleSchema.parse(123)).toEqual(123);
+  });
+});
+
+describe("transforms", () => {
+  it("string to number", () => {
+    const schema = createSchema<string>()(
+      z.string().transform((v) => parseInt(v))
+    );
+    expect(schema.parse("100")).toEqual(100);
+  });
+
+  it("number to string", () => {
+    const schema = createSchema<number>()(
+      z.number().transform((v) => v.toString())
+    );
+    expect(schema.parse(100)).toEqual("100");
+  });
+
+  it("object", () => {
+    type Object = {
+      a: string;
+      b: number;
+    };
+    const schema = createSchema<Object>()(({ object }) =>
+      object({ a: z.string(), b: z.number() }).transform(({ a, b }) => ({
+        a: b,
+        b: a,
+      }))
+    );
+    expect(schema.parse({ a: "1", b: 1 })).toEqual({ a: 1, b: "1" });
+  });
+
+  it("partial object", () => {
+    type NestedObject = {
+      a: string;
+      nested_a: {
+        b: number;
+        nested_b: {
+          c: boolean;
+        };
+      };
+    };
+    const schema = createSchema<NestedObject>()(({ object }) =>
+      object({
+        nested_a: ({ object }) =>
+          object({
+            nested_b: ({ object }) => object({ c: z.boolean() }),
+          }).transform(({ b, nested_b }) => ({ nested_b, b: b.toString() })),
+      }).transform(({ a, nested_a }) => ({
+        a,
+        ...nested_a,
+      }))
+    );
+
+    expectTypeOf<z.infer<typeof schema>>().branded.toEqualTypeOf<{
+      a: string;
+      b: string;
+      nested_b: { c: boolean };
+    }>();
+    expect(
+      schema.parse({
+        a: "string",
+        nested_a: {
+          b: 100,
+          nested_b: {
+            c: true,
+          },
+        },
+      })
+    ).toEqual({
+      a: "string",
+      b: "100",
+      nested_b: {
+        c: true,
+      },
+    });
   });
 });
 
