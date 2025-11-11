@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createSchema } from "./create-schema";
 import * as z from "zod/v4";
-import type { CreateConfig } from "./config.types";
 
 describe("Naked Types", () => {
   it("string", () => {
@@ -188,10 +187,6 @@ describe("Product Types", () => {
   it("union", () => {
     type Union = boolean | number | { a: string } | number[];
 
-    type UnionConfig = Parameters<
-      Parameters<Extract<CreateConfig<Union>, Function>>[0]["union"]
-    >[0];
-
     const unionSchema = createSchema<Union>()(({ union }) =>
       union([
         z.boolean(),
@@ -206,6 +201,7 @@ describe("Product Types", () => {
     expect(unionSchema.parse(false)).toEqual(false);
     expect(unionSchema.parse(123)).toEqual(123);
     expect(unionSchema.parse({ a: "string" })).toEqual({ a: "string" });
+    expect(unionSchema.parse([1, 2, 3, 1.1])).toEqual([1, 2, 3, 1.1]);
 
     expect(singleSchema.parse(123)).toEqual(123);
   });

@@ -1,7 +1,6 @@
 import type {
   ArrayShape,
   BuilderFunctionOptions,
-  BuilderFunctions,
   ConfigNode,
   CreateConfig,
   ObjectShape,
@@ -10,7 +9,6 @@ import type {
   TupleShape,
 } from "./config.types";
 import * as z from "zod/v4";
-import type { MergeBuilderFunctions } from "./types";
 
 const isZodType = (obj: object): obj is z.ZodType => {
   return "_zod" in obj;
