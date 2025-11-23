@@ -36,7 +36,7 @@ const arrayResolver = <Shape extends ConfigNode>(config: Shape) => {
 const tupleResolver = <Shape extends TupleShape>(config: Shape) => {
   const shape = [...config.map((node) => resolveConfig(node))] as const;
   if (!isTupleShape(shape)) {
-    throw new Error("tuple types need at least 1 element");
+    return z.tuple([]);
   }
   return z.tuple(shape);
 };

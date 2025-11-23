@@ -104,6 +104,14 @@ describe("Product Types", () => {
     expect(schema.parse(array)).toEqual(array);
   });
 
+  it("empty array/tuple", () => {
+    type EmptyArray = [];
+
+    const schema = createSchema<EmptyArray>()(({ tuple }) => tuple([]));
+    expect(schema.parse([])).toEqual([]);
+    expect(() => schema.parse([1])).toThrowError();
+  });
+
   it("simple tuple", () => {
     type Tuple = [string, number, boolean, null];
 
@@ -170,6 +178,8 @@ describe("Product Types", () => {
         ({ tuple }) => tuple([z.string(), z.number()]),
       ])
     );
+
+    expectTypeOf<NestedTuple>().branded.toEqualTypeOf<z.infer<typeof schema>>();
 
     const correctNestedTuple: NestedTuple = [
       [123, "string"],
@@ -250,8 +260,12 @@ describe("transforms", () => {
       object({
         nested_a: ({ object }) =>
           object({
-            nested_b: ({ object }) => object({ c: z.boolean() }),
-          }).transform(({ b, nested_b }) => ({ nested_b, b: b.toString() })),
+            nested_b: ({ object }) =>
+              object({ c: z.boolean().transform((_) => "string") }),
+          }).transform(({ b, nested_b }) => ({
+            nested_b,
+            b: b.toString(),
+          })),
       }).transform(({ a, nested_a }) => ({
         a,
         ...nested_a,
@@ -261,7 +275,7 @@ describe("transforms", () => {
     expectTypeOf<z.infer<typeof schema>>().branded.toEqualTypeOf<{
       a: string;
       b: string;
-      nested_b: { c: boolean };
+      nested_b: { c: string };
     }>();
     expect(
       schema.parse({
@@ -277,7 +291,7 @@ describe("transforms", () => {
       a: "string",
       b: "100",
       nested_b: {
-        c: true,
+        c: "string",
       },
     });
   });
@@ -291,6 +305,7 @@ describe("createSchema Complex Type", () => {
       c: number;
       d: null;
     };
+    array: ({ a: string; b: number } | boolean[] | ["one", "two", "three"])[];
   };
 
   const schema = createSchema<ComplexType>()(({ object }) =>
@@ -337,5 +352,27 @@ describe("createSchema Complex Type", () => {
     };
     const result = schema.parse(extra);
     expect(result).toEqual(extra);
+  });
+
+  it("handles complex array nesting", () => {
+    const schema = createSchema<ComplexType>()(({ object }) =>
+      object({
+        array: ({ array }) =>
+          array(({ union }) =>
+            union([
+              ({ array }) => array(z.boolean()),
+              ({ object }) =>
+                object({
+                  a: z.string(),
+                  b: z.number(),
+                }),
+              ({ tuple }) =>
+                tuple([z.literal("one"), z.literal("two"), z.literal("three")]),
+            ])
+          ),
+      })
+    );
+
+    expectTypeOf<ComplexType>().branded.toEqualTypeOf<z.infer<typeof schema>>();
   });
 });

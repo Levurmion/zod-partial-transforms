@@ -222,11 +222,13 @@ type ResolveUnionConfig<Config extends unknown[]> = ResolveConfig<
   ? z.ZodUnion<ResolvedElements[]>
   : never;
 
-type ResolveArrayConfig<Config extends unknown> = ResolveConfig<Config>;
+type ResolveArrayConfig<Config extends unknown> = z.ZodArray<
+  ResolveConfig<Config>
+>;
 
 type ResolveTupleConfig<Config extends readonly unknown[]> =
   ResolveTupleConfig_Rec<Config> extends infer ResolvedElements extends z.util.TupleItems
-    ? z.ZodTuple<ResolvedElements>
+    ? z.ZodTuple<ResolvedElements, null>
     : never;
 
 type ResolveTupleConfig_Rec<Config extends readonly unknown[]> =
