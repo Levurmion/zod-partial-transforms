@@ -222,13 +222,23 @@ type ResolveUnionConfig<
   Config[number]
 > extends infer ResolvedElements extends core.SomeType
   ? z.ZodUnion<ResolvedElements[]> extends infer ZU extends z.ZodUnion
-    ? Merge<
+    ? // we aim to directly modify the union's inferred input/output
+      Merge<
         ZU,
         {
           _zod: Merge<
             ZU["_zod"],
             {
+              // the input must be asserted as the Original type
               input: z.input<ZU> | Original;
+              /**
+               * the output asserted as:
+               *
+               * output of declared members + (Original types - input of declared members)
+               *
+               * This correctly represents any transformations that occur on declared
+               * union members.
+               */
               output: z.output<ZU> | Exclude<Original, z.input<ZU>>;
             }
           >;
