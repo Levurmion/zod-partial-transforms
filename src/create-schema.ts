@@ -9,8 +9,6 @@ import type {
   TupleShape,
 } from "./config.types";
 import * as z from "zod/v4";
-import type { DefaultLinterOptions, LinterOptions } from "./linter";
-import type { Merge } from "type-fest";
 
 const isZodType = (obj: object): obj is z.ZodType => {
   return "_zod" in obj;
@@ -71,15 +69,8 @@ const resolveConfig = <Config extends ConfigNode>(
   }
 };
 
-export const createSchema = <
-  O extends OriginalTypes,
-  Options extends LinterOptions = DefaultLinterOptions
->() => {
-  type MergedOptions = Merge<DefaultLinterOptions, Options>;
-
-  return <SchemaConfig extends CreateConfig<O, MergedOptions>>(
-    config: SchemaConfig
-  ) => {
+export const createSchema = <O extends OriginalTypes>() => {
+  return <SchemaConfig extends CreateConfig<O>>(config: SchemaConfig) => {
     return resolveConfig(config);
   };
 };

@@ -8,12 +8,6 @@ import type {
 } from "./types";
 import * as z from "zod/v4";
 import * as core from "zod/v4/core";
-import type {
-  AllowAnyZodType,
-  DefaultLinterOptions,
-  LinterOptions,
-  ZodTypeOutput,
-} from "./linter";
 
 // ===== NAKED TYPES =====
 
@@ -106,62 +100,46 @@ export type ConfigNode = z.ZodType | undefined | BuilderFunctions;
 
 // ===== CONFIG CREATOR GENERIC =====
 
-export type CreateConfig<
-  O extends OriginalTypes,
-  Options extends LinterOptions = DefaultLinterOptions
-> =
-  | ([
-      CreateConfig_Singleton<O, Options>,
-      CreateConfig_Union<O, Options>
-    ] extends [infer Single extends ConfigNode, infer Union extends ConfigNode]
-      ?
-          | Exclude<Single | Union, FunctionType>
-          | MergeBuilderFunctions<Extract<Single | Union, FunctionType>>
-      : never)
-  | AllowAnyZodType<Options>;
+export type CreateConfig<O extends OriginalTypes> = [
+  CreateConfig_Singleton<O>,
+  CreateConfig_Union<O>
+] extends [infer Single extends ConfigNode, infer Union extends ConfigNode]
+  ?
+      | Exclude<Single | Union, FunctionType>
+      | MergeBuilderFunctions<Extract<Single | Union, FunctionType>>
+  : never;
 
-type CreateConfig_Singleton<
-  O extends OriginalTypes,
-  Options extends LinterOptions = DefaultLinterOptions
-> = IsLiteral<O> extends true
-  ? CreateConfig_Literal<O, Options>
+type CreateConfig_Singleton<O extends OriginalTypes> = IsLiteral<O> extends true
+  ? CreateConfig_Literal<O>
   : O extends boolean
   ? ZodBooleanTypes
   : O extends OriginalObjectType
-  ? CreateConfig_Object<O, Options>
+  ? CreateConfig_Object<O>
   : O extends OriginalArrayType
   ? IsTuple<O> extends true
     ? CreateConfig_Tuple<O, Options>
     : CreateConfig_Array<O, Options>
   : GetConfigNakedType<O, Options>;
 
-type CreateConfig_Union<
-  O extends OriginalTypes = OriginalTypes,
-  Options extends LinterOptions = DefaultLinterOptions
-> = IsUnion<O> extends true
-  ? (opt: {
-      union: <Shape extends CreateUnionShape<O, Options>>(
-        config: Shape
-      ) => ResolveUnionConfig<Shape, O, Options>;
-    }) => z.ZodType
-  : never;
+type CreateConfig_Union<O extends OriginalTypes = OriginalTypes> =
+  IsUnion<O> extends true
+    ? (opt: {
+        union: <Shape extends CreateUnionShape<O>>(
+          config: Shape
+        ) => ResolveUnionConfig<Shape, O>;
+      }) => z.ZodType
+    : never;
 
-export type CreateUnionShape<
-  O extends OriginalTypes,
-  Options extends LinterOptions
-> = (
-  | Exclude<HandleUnionMembers<O, Options>, FunctionType>
-  | MergeBuilderFunctions<Extract<HandleUnionMembers<O, Options>, FunctionType>>
+export type CreateUnionShape<O extends OriginalTypes> = (
+  | Exclude<HandleUnionMembers<O>, FunctionType>
+  | MergeBuilderFunctions<Extract<HandleUnionMembers<O>, FunctionType>>
   | HandleBooleanInUnion<O>
   | AllowAnyZodType<Options>
 )[];
 
-type HandleUnionMembers<
-  O extends OriginalTypes,
-  Options extends LinterOptions
-> = O extends unknown
+type HandleUnionMembers<O extends OriginalTypes> = O extends unknown
   ? // distribute O to be interrogated per-union member
-    CreateConfig_Singleton<O, Options>
+    CreateConfig_Singleton<O>
   : never;
 
 type HandleBooleanInUnion<O extends OriginalTypes> = [boolean] extends [O]
@@ -172,20 +150,15 @@ type CreateConfig_Literal<O, Options extends LinterOptions> =
   | z.ZodLiteral<Extract<O, z.util.Literal>>
   | AllowAnyZodType<Options>;
 
-type CreateConfig_Object<
-  O extends OriginalObjectType = OriginalObjectType,
-  Options extends LinterOptions = DefaultLinterOptions
-> = (opt: {
-  object: <Shape extends CreateObjectShape<O, Options>>(
-    config: Shape
-  ) => ResolveObjectConfig<Shape, O>;
-}) => ZodTypeOutput<Options, O>;
+type CreateConfig_Object<O extends OriginalObjectType = OriginalObjectType> =
+  (opt: {
+    object: <Shape extends CreateObjectShape<O>>(
+      config: Shape
+    ) => ResolveObjectConfig<Shape, O>;
+  }) => z.ZodType;
 
-export type CreateObjectShape<
-  O extends OriginalObjectType,
-  Options extends LinterOptions
-> = {
-  [K in keyof O]?: CreateConfig<O[K], Options> | AllowAnyZodType<Options>;
+export type CreateObjectShape<O extends OriginalObjectType> = {
+  [K in keyof O]?: CreateConfig<O[K]>;
 };
 
 export type ObjectShape = { [key: string]: ConfigNode };
