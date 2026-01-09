@@ -394,12 +394,12 @@ describe("union merging", () => {
     type SimpleUnion = boolean | string | null;
 
     const symbol = Symbol("");
-    const partiaSimplelUnionSchema = createSchema<SimpleUnion>()(({ union }) =>
+    const partialSimplelUnionSchema = createSchema<SimpleUnion>()(({ union }) =>
       union([z.boolean().transform((_) => symbol)])
     );
 
     const undeclaredMember = "string";
-    expect(partiaSimplelUnionSchema.parse(undeclaredMember)).toBe(
+    expect(partialSimplelUnionSchema.parse(undeclaredMember)).toBe(
       undeclaredMember
     );
 
@@ -407,17 +407,17 @@ describe("union merging", () => {
     const booleanMember: SimpleUnion = true;
 
     // passes through undeclared member
-    expect(partiaSimplelUnionSchema.parse(stringMember)).toEqual(stringMember);
+    expect(partialSimplelUnionSchema.parse(stringMember)).toEqual(stringMember);
 
     // transforms declared member
-    expect(partiaSimplelUnionSchema.parse(booleanMember)).toEqual(symbol);
+    expect(partialSimplelUnionSchema.parse(booleanMember)).toEqual(symbol);
 
     expectTypeOf<SimpleUnion>().toEqualTypeOf<
-      z.input<typeof partiaSimplelUnionSchema>
+      z.input<typeof partialSimplelUnionSchema>
     >();
     // substitutes the declared union member with its transformation output
     expectTypeOf<symbol | string | null>().toEqualTypeOf<
-      z.output<typeof partiaSimplelUnionSchema>
+      z.output<typeof partialSimplelUnionSchema>
     >();
   });
 
