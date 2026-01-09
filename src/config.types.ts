@@ -11,68 +11,24 @@ import * as core from "zod/v4/core";
 
 // ===== NAKED TYPES =====
 
-type ZodStringTypes =
-  | z.ZodString
-  | z.ZodStringFormat
-  | z.ZodGUID
-  | z.ZodUUID
-  | z.ZodEmail
-  | z.ZodURL
-  | z.ZodEmoji
-  | z.ZodNanoID
-  | z.ZodCUID
-  | z.ZodCUID2
-  | z.ZodULID
-  | z.ZodXID
-  | z.ZodKSUID
-  | z.ZodISODateTime
-  | z.ZodISODate
-  | z.ZodISOTime
-  | z.ZodISODuration
-  | z.ZodIPv4
-  | z.ZodIPv6
-  | z.ZodCIDRv4
-  | z.ZodCIDRv6
-  | z.ZodBase64
-  | z.ZodBase64URL
-  | z.ZodE164
-  | z.ZodJWT;
-
-type ZodNumberTypes =
-  | z.ZodNumber
-  | z.ZodNumberFormat
-  | z.ZodBigInt
-  | z.ZodBigIntFormat;
-
-type ZodUndefinedTypes = z.ZodUndefined;
-
-type ZodNullTypes = z.ZodNull;
-
-type ZodSymbolTypes = z.ZodSymbol;
-
-type ZodDateTypes = z.ZodDate;
-
-type ZodBooleanTypes = z.ZodBoolean | TypedZodPipe<z.ZodBoolean>;
-
-type ConfigNakedTypesMap =
-  | [string, ZodStringTypes]
-  | [number, ZodNumberTypes]
-  | [undefined, ZodUndefinedTypes]
-  | [null, ZodNullTypes]
-  | [symbol, ZodSymbolTypes]
-  | [Date, ZodDateTypes]
-  | [boolean, ZodBooleanTypes];
-
-type OriginalNakedTypes = ConfigNakedTypesMap[0];
-
 type GetConfigNakedType<O> =
-  | Extract<ConfigNakedTypesMap, [O, unknown]>[1]
-  | TypedZodPipe<Extract<ConfigNakedTypesMap, [O, unknown]>[1]>;
+  | z.ZodType<unknown, O>
+  | TypedZodPipe<z.ZodType<unknown, O>>;
 
 type TypedZodPipe<InputSchema extends z.ZodType> = z.ZodPipe<
   InputSchema,
   core.SomeType
 >;
+
+type OriginalNakedTypes =
+  | string
+  | number
+  | undefined
+  | null
+  | symbol
+  | Date
+  | boolean
+  | bigint;
 
 // ===== ALL TYPES =====
 
@@ -111,7 +67,7 @@ export type CreateConfig<O extends OriginalTypes> = [
 type CreateConfig_Singleton<O extends OriginalTypes> = IsLiteral<O> extends true
   ? CreateConfig_Literal<O>
   : O extends boolean
-  ? ZodBooleanTypes
+  ? GetConfigNakedType<boolean>
   : O extends OriginalObjectType
   ? CreateConfig_Object<O>
   : O extends OriginalArrayType
@@ -141,7 +97,7 @@ type HandleUnionMembers<O extends OriginalTypes> = O extends unknown
   : never;
 
 type HandleBooleanInUnion<O extends OriginalTypes> = [boolean] extends [O]
-  ? ZodBooleanTypes
+  ? GetConfigNakedType<boolean>
   : never;
 
 type CreateConfig_Literal<O> = z.ZodLiteral<Extract<O, z.util.Literal>>;
