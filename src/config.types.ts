@@ -107,7 +107,7 @@ type CreateConfig_Object<O extends OriginalObjectType = OriginalObjectType> =
     object: <Shape extends CreateObjectShape<O>>(
       config: Shape
     ) => ResolveObjectConfig<Shape, O>;
-  }) => z.ZodType;
+  }) => z.ZodType<unknown, O>;
 
 export type CreateObjectShape<O extends OriginalObjectType> = {
   [K in keyof O]?: CreateConfig<O[K]>;
@@ -120,7 +120,7 @@ type CreateConfig_Array<O extends OriginalArrayType = OriginalArrayType> =
     array: <Shape extends CreateArrayShape<O>>(
       config: Shape
     ) => ResolveArrayConfig<Shape>;
-  }) => z.ZodType;
+  }) => z.ZodType<unknown, O>;
 
 export type CreateArrayShape<O extends OriginalArrayType = OriginalArrayType> =
   CreateConfig<O[number]>;
@@ -132,7 +132,7 @@ type CreateConfig_Tuple<O extends OriginalTupleType = OriginalTupleType> =
     tuple: <Shape extends CreateTupleShape<O>>(
       config: Shape
     ) => ResolveTupleConfig<Shape>;
-  }) => z.ZodType;
+  }) => z.ZodType<unknown, O>;
 
 export type CreateTupleShape<O extends OriginalTupleType> = O extends [
   infer First extends OriginalTypes,
