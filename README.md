@@ -307,14 +307,15 @@ const schema = z.object({
 }) satisfies z.ZodType<unknown, EndpointResponse>;
 ```
 
-[image]
+<img width="622" height="410" alt="Screenshot 2026-01-10 at 11 01 24" src="https://github.com/user-attachments/assets/9331db6b-9d73-4cde-8b40-c3aa37ee0307" />
 
 With `createSchema`, the exact offending line will be highlighted directly in your editor - potentially making it easier to diagnose schema drifts.
 
-[image]
+<img width="571" height="254" alt="Screenshot 2026-01-10 at 11 03 48" src="https://github.com/user-attachments/assets/7c28361a-2e39-48fc-afcc-ed284f672850" />
 
 ### Type Autocompletes
 
 When building out your schema with the canonical strategy, you'll find that you get zero autocomplete assistance for fields or array/tuple elements. For large, deeply-nested objects, this can be mind-bending. `createSchema` will guide you through every level of the schema's construction.
 
-[image]
+<img width="568" height="433" alt="Screenshot 2026-01-10 at 11 12 23" src="https://github.com/user-attachments/assets/6c896796-4b57-4859-aaa4-e12429f3f37c" />
+
