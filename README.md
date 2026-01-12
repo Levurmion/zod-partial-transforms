@@ -271,7 +271,7 @@ Each item is a small function wrapping their corresponding `zod` parsers. Howeve
 
 The key change here is that the arguments to these wrapped `object/array/tuple/union` functions are typed as the composition of other `Builder` functions that can construct the nested types. Each `Builder` is therefore recursively instantiating other `Builders` for its own internal types to ensure that only valid schemas can be constructed throughout the entire chain.
 
-> 💡 While writing this, I came across **"tagless-final"** which apparently is the term that FP programmers and language nerds use to refer to this pattern of embedding DSLs into a strongly-typed language. I have strong interests in lang dev and type theory (I absolutely recommend the *Crafting Interpreters* book!). Though sad to admit that I haven't managed to invest as much time as I'd like into this hobby outside of my FE day job. 😢
+> 💡 While writing this, I came across the term **"tagless DSL"** which is apparently what I've rediscovered in this project. The pattern is called tagless because you don't make use of tagged unions to represent AST nodes. Just pure function compositions! I have strong interests in lang dev and type theory (I absolutely recommend the *Crafting Interpreters* book!). Though sad to admit that I haven't managed to invest as much time as I'd like into this hobby outside of my FE day job. 😢
 
 ### In Summary
 
